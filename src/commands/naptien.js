@@ -12,30 +12,13 @@ module.exports = {
     .addIntegerOption(option =>
       option.setName('sotien')
         .setDescription('Số tiền bạn muốn nạp')
-        .setRequired(true)), 
+        .setRequired(true)),
 
   async execute(interaction) {
     const discordID = interaction.user.id;
     const amount = interaction.options.getInteger('sotien');
-    const Log_NapTien = "1385292807832473701";
 
-    const embed = new EmbedBuilder()
-      .setColor('#FF6347')
-      .setTitle('🎮 **Nạp tiền vào tài khoản game**')
-      .setDescription(`**<@${discordID}>** đã yêu cầu nạp **${amount} VND** vào tài khoản game.`)
-      .setThumbnail('https://i.imgur.com/YkGSQAd.jpeg')
-      .setFooter({ text: 'Nạp tiền từ bot', iconURL: 'https://i.imgur.com/YkGSQAd.jpeg' })
-      .setTimestamp();
 
-    const channel = await interaction.client.channels.fetch(Log_NapTien);
-
-    if (channel) {
-      channel.send({
-        embeds: [embed]
-      });
-    } else {
-      console.log('Channel not found.');
-    }
 
     if (!amount || amount <= 0 || amount < 5000) {
       return interaction.reply('❌ **Số tiền bạn nhập không hợp lệ!**');
@@ -48,6 +31,28 @@ module.exports = {
     }
 
     try {
+
+      let embed = new EmbedBuilder()
+        .setColor('#FF6347')
+        .setTitle('🎮 **Nạp tiền vào tài khoản game**')
+        .setDescription(`**<@${discordID}>** đã yêu cầu nạp **${amount} VND** vào tài khoản game.`)
+        .setThumbnail('https://i.imgur.com/YkGSQAd.jpeg')
+        .setFooter({ text: 'Nạp tiền từ bot', iconURL: 'https://i.imgur.com/YkGSQAd.jpeg' })
+        .setTimestamp();
+
+      try {
+        const channel = await interaction.client.channels.fetch(process.env.Log_NapTien);
+        if (!channel) {
+          console.log('Không thể tìm thấy kênh!');
+        } else {
+          // Gửi tin nhắn đến kênh
+          await channel.send({ embeds: [embed] });
+          console.log('Tin nhắn đã được gửi thành công');
+        }
+      } catch (error) {
+        console.error('Lỗi khi gửi tin nhắn:', error);
+      }
+
       // Lấy UID từ bảng accounts dựa trên DiscordID
       const [accountResults] = await db.promise().query(
         'SELECT ID FROM accounts WHERE DiscordID = ?',
@@ -63,21 +68,15 @@ module.exports = {
       }
 
       const uid = accountResults[0].ID;
-
-      // Lưu thông tin nạp tiền vào bảng rc_naptien
-      await db.promise().query(
-        'INSERT INTO rc_naptien (uid, amount, noidung) VALUES (?, ?, ?)',
-        [uid, amount, "RCRP"+uid]
-      );
-
-      // Tạo Embed với thông tin giao dịch
-      const embed = new EmbedBuilder()
+      embed = new EmbedBuilder()
         .setColor('#FF6347')
         .setTitle('🎮 **Nạp tiền vào tài khoản game**')
         .setDescription(`Bạn đã yêu cầu nạp **${amount}** vào tài khoản game.\nDưới đây là mã QR để thực hiện chuyển khoản.\n\n👉 **Quét mã QR để nạp tiền!**`)
         .setThumbnail('https://i.imgur.com/YkGSQAd.jpeg')
-        .addFields({ name: '💡 Hướng dẫn', value: '1. Quét mã QR.\n\
-            2. Đợi máy chủ xử lí trong 5-15p (hoặc có thể nhanh hơn).', inline: false })
+        .addFields({
+          name: '💡 Hướng dẫn', value: '1. Quét mã QR.\n\
+            2. Đợi máy chủ xử lí trong 5-15p (hoặc có thể nhanh hơn).', inline: false
+        })
         .setFooter({ text: 'Powered by RCRP', iconURL: 'https://i.imgur.com/YkGSQAd.jpeg' })
         .setTimestamp();
 
